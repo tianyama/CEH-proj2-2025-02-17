@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/containers';
+const API_URL = 'http://localhost:3000/products';
 
 export const fetchData = async () => {
   try {
@@ -21,7 +21,7 @@ export const addContainer = async (data: any) => {
   }
 };
 
-export const updateContainer = async (id: number, data: any) => {
+export const updateContainer = async (id: string, data: any) => {
   try {
     const response = await axios.put(`${API_URL}/${id}`, data);
     return response.data;
@@ -30,7 +30,7 @@ export const updateContainer = async (id: number, data: any) => {
   }
 };
 
-export const deleteContainer = async (id: number) => {
+export const deleteContainer = async (id: string) => {
   try {
     await axios.delete(`${API_URL}/${id}`);
   } catch (error) {

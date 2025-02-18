@@ -1,6 +1,5 @@
 import { Container, Paper, Typography, Stack, Box } from '@mui/material';
 import DataTable from '../components/DataTable';
-import Toolbar from '../components/Toolbar';
 import SelectCompany from '../components/SelectCompany';
 
 const Home = () => {
@@ -11,10 +10,7 @@ const Home = () => {
         <Box width="20%" bgcolor="white" p={2} boxShadow={1}>
           <SelectCompany />
         </Box>
-        <Box flex={1} p={4} display="flex" flexDirection="column" bgcolor="white">
-          <Toolbar />
-          <DataTable />
-        </Box>
+        <DataTable />
       </Box>
     </Box>
   );
