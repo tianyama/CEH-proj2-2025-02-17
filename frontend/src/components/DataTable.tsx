@@ -5,7 +5,7 @@ import { Button, TextField, Stack, Box } from '@mui/material';
 import { Add, Delete, Save, FileDownload } from '@mui/icons-material';
 
 const columns: GridColDef[] = [
-  { field: 'id', headerName: 'STT', width: 100 },
+  { field: '_id', headerName: 'STT', width: 100 },
   { field: 'operationCode', headerName: 'Hãng khai thác', width: 200, editable: true },
   { field: 'localSizeType', headerName: 'Kích cỡ nội bộ', width: 200, editable: true },
   { field: 'isoSizeType', headerName: 'Kích cỡ ISO', width: 150, editable: true },
@@ -14,11 +14,26 @@ const columns: GridColDef[] = [
 ];
 
 const DataTable = () => {
-  const [rows, setRows] = useState([]);
+  interface RowData {
+    id: number;
+    operationCode: string;
+    localSizeType: string;
+    isoSizeType: string;
+    cargoTypeCode: string;
+    emptyCargoTypeCode: string;
+  }
+
+  const [rows, setRows] = useState<RowData[]>([]);
   const [selectionModel, setSelectionModel] = useState([]);
 
   useEffect(() => {
-    fetchData().then(data => setRows(data));
+    fetchData().then(data => {
+      const getIndex = data.map((row: RowData, index: number) =>
+      ({
+        id: index+1,
+      }));
+      setRows(getIndex)
+    });
   }, []);
 
   const addRow = () => {
@@ -36,14 +51,14 @@ const DataTable = () => {
       // Update existing rows
       for (const row of rows) {
         if (row.id <= rows.length) {
-          await updateContainer(row.id.toString(), row);
+          await updateContainer(row.id, row);
         } else {
           await addContainer(row);
         }
       }
       // Delete removed rows
       for (const id of selectionModel) {
-        await deleteContainer(id.toString());
+        await deleteContainer(id);
       }
       alert('Dữ liệu đã được cập nhật thành công!');
     } catch (error) {
@@ -65,8 +80,8 @@ const DataTable = () => {
         <DataGrid
           rows={rows}
           columns={columns}
-          checkboxSelection
           editMode="row"
+          checkboxSelection
           onSelectionModelChange={(newSelection) => {
             setSelectionModel(newSelection);
           }}
