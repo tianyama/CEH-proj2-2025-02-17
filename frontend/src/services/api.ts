@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://be-size-container-api.onrender.com';
+const API_URL = 'https://be-size-container-api.onrender.com/products';
 
 export const fetchData = async () => {
   try {

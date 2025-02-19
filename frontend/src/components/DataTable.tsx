@@ -7,27 +7,27 @@ import * as XLSX from 'xlsx';
 import SelectEditInputCell from './SelectEditInputCell';
 
 const columns: GridColDef[] = [
-  { field: 'id', headerName: 'STT', width: 100 },
+  { field: '_id', headerName: 'ID', width: 150 },
   {
     field: 'operationCode',
     headerName: 'Hãng khai thác',
-    width: 200,
+    width: 100,
     editable: true,
     renderEditCell: (params) => <SelectEditInputCell {...params} />,
   },
-  { field: 'localSizeType', headerName: 'Kích cỡ nội bộ', width: 200, editable: true },
-  { field: 'isoSizeType', headerName: 'Kích cỡ ISO', width: 150, editable: true },
+  { field: 'localSizetype', headerName: 'Kích cỡ nội bộ', width: 200, editable: true },
+  { field: 'isoSizetype', headerName: 'Kích cỡ ISO', width: 150, editable: true },
   { field: 'cargoTypeCode', headerName: 'Loại hàng', width: 200, editable: true },
   { field: 'emptyCargoTypeCode', headerName: 'Loại hàng rỗng', width: 200, editable: true },
 ];
 
 interface DataTableProps {
-  readonly selectedCompany: string;
+  selectedCompany: string;
 }
 
 export default function DataTable ({ selectedCompany }: DataTableProps) {
   interface RowData {
-    id: number;
+    _id: string;
     operationCode: string;
     localSizeType: string;
     isoSizeType: string;
@@ -37,51 +37,55 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
 
   const [rows, setRows] = useState<RowData[]>([]);
   const [selectionModel, setSelectionModel] = useState<number[]>([]);
+  const [rowsOLD, setRowsOLD] = useState<RowData[]>([]);
 
   useEffect(() => {
     fetchData().then(data => {
-      const getIndex = data.map((index: number) => ({
-        id: index + 1,
-        operationCode: data[index].operationCode,
-        localSizeType: data[index].localSizeType,
-        isoSizeType: data[index].isoSizeType,
-        cargoTypeCode: data[index].cargoTypeCode,
-        emptyCargoTypeCode: data[index].emptyCargoTypeCode,
-      }));
-      setRows(getIndex);
+      setRowsOLD(data);
+      if (selectedCompany) {
+        const filteredRows = data.filter(data => data.operationCode === selectedCompany);
+        setRows(filteredRows);}
+      else {
+        setRows(data);
+      }
     });
-  }, []);
-
-  useEffect(() => {
-    if (selectedCompany) {
-      const filteredRows = rows.filter(row => row.operationCode === selectedCompany);
-      setRows(filteredRows);
-    }
   }, [selectedCompany]);
 
   const addRow = () => {
-    const newRow = { id: rows.length + 1, operationCode: '', localSizeType: '', isoSizeType: '', cargoTypeCode: '', emptyCargoTypeCode: '' };
+    const newRow = { _id: rows.length + 1, operationCode: '', localSizeType: '', isoSizeType: '', cargoTypeCode: '', emptyCargoTypeCode: '' };
     setRows([...rows, newRow]);
   };
 
-  const deleteRow = () => {
-    const newRows = rows.filter(row => !selectionModel.includes(row.id));
+  const deleteRow = async () => {
+    const newRows = rows.filter(row => !selectionModel.includes(row._id));
     setRows(newRows);
+    try {
+      for (let delrow of selectionModel) {
+        await deleteContainer(delrow.toString());
+      }
+      alert('Dữ liệu đã được cập nhật thành công!');
+    } catch (error) {
+      console.error('Lỗi cập nhật dữ liệu:', error);
+      alert('Có lỗi xảy ra khi cập nhật dữ liệu.');
+    }
   };
 
   const updateData = async () => {
     try {
-      // Update existing rows
-      for (const row of rows) {
-        if (row.id <= rows.length) {
-          await updateContainer(row.id.toString(), row);
-        } else {
-          await addContainer(row);
+      for (let row of rows) {
+        let flag = 0;
+        for (let rowOLD of rowsOLD) {
+          if (row._id == rowOLD._id) { 
+            const { _id, ...rowData } = row;
+            await updateContainer(row._id, rowData);
+            flag = 1;
+            break;
+          } 
         }
-      }
-      // Delete removed rows
-      for (const id of selectionModel) {
-        await deleteContainer(id.toString());
+        if (flag == 0) {
+          const { _id, ...rowData } = row;
+          await addContainer(rowData);
+        }
       }
       alert('Dữ liệu đã được cập nhật thành công!');
     } catch (error) {
@@ -91,9 +95,17 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
   };
 
   const processRowUpdate = (newRow: RowData) => {
-    const updatedRows = rows.map(row => (row.id === newRow.id ? newRow : row));
+    const updatedRows = rows.map(row => (row._id === newRow._id ? newRow : row));
     setRows(updatedRows);
     return newRow;
+  };
+
+  const exportRawExcel = () => {
+    const headers = columns.map(col => col.headerName);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+    XLSX.writeFile(workbook, 'Mẫu danh sách container rỗng.xlsx');
   };
 
   const exportToExcel = () => {
@@ -122,10 +134,12 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
       const headers = jsonData[0] as string[];
       const rowsData = jsonData.slice(1);
+
       const newRows = rowsData.map((row, index) => {
-        const rowData: any = { id: rows.length + index + 1 };
+        const rowData: any = {};
         headers.forEach((header, i) => {
           const column = columns.find(col => col.headerName === header);
           if (column) {
@@ -135,7 +149,19 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
         return rowData;
       });
 
-      setRows([...rows, ...newRows]);
+      const updatedRows = [...rows];
+      newRows.forEach((newRow) => {
+        const existingRowIndex = updatedRows.findIndex(row => row._id === newRow._id);
+        if (existingRowIndex !== -1) {
+          // Ghi đè dữ liệu trong Excel lên bảng
+          updatedRows[existingRowIndex] = { ...updatedRows[existingRowIndex], ...newRow };
+        } else {
+          // Thêm vào các hàng cuối
+          updatedRows.push({ ...newRow, _id: (updatedRows.length + 1).toString() });
+        }
+      });
+
+      setRows(updatedRows);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -148,6 +174,7 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
         <Button variant="outlined" color="error" startIcon={<Delete />} onClick={deleteRow}>Xóa</Button>
         <Button variant="outlined" color="success" startIcon={<Save />} onClick={updateData}>Lưu</Button>
         <Button variant="outlined" startIcon={<FileDownload />} onClick={exportToExcel}>Xuất Excel</Button>
+        <Button variant="outlined" startIcon={<FileDownload />} onClick={exportRawExcel}>Excel mẫu</Button>
         <Button variant="outlined" startIcon={<UploadFile />} component="label">
           Nhập Excel <input type="file" hidden onChange={importFromExcel} />
         </Button>
@@ -156,6 +183,7 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
         <DataGrid
           rows={rows}
           columns={columns}
+          getRowId={(row) => row._id}
           editMode="row"
           rowSelectionModel={selectionModel}
           checkboxSelection
@@ -164,7 +192,8 @@ export default function DataTable ({ selectedCompany }: DataTableProps) {
           hideFooter
           processRowUpdate={processRowUpdate}
           onRowSelectionModelChange={(newSelection) => {
-            setSelectionModel(newSelection as number[]);
+            console.log(newSelection);
+            setSelectionModel(newSelection);
           }}
         />
       </div>

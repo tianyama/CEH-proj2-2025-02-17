@@ -3,7 +3,7 @@ import { Autocomplete, TextField, Box } from '@mui/material';
 
 export const companyList = [
   { code: 'HLC', title: 'Hapag-Lloyd' },
-  { code: 'MSC', title: 'Mediterranean Shipping Company' },
+  { code: 'MMA', title: 'Mediterranean Shipping Company' },
   { code: 'CMA', title: 'CMA CGM' },
 ];
 
